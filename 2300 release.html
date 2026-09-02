@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>口语批改助手（多音频批改）</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 2rem 1rem;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sub {
+            color: #475569;
+            margin-bottom: 1.5rem;
+            border-left: 3px solid #3b82f6;
+            padding-left: 1rem;
+        }
+        .note {
+            background: #fef9e3;
+            border-left: 4px solid #f59e0b;
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            margin: 1rem 0;
+        }
+        label {
+            font-weight: 600;
+            display: block;
+            margin: 1rem 0 0.25rem 0;
+        }
+        input,
+        button {
+            width: 100%;
+            font-family: inherit;
+            font-size: 0.95rem;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            padding: 0.7rem 1rem;
+            background: #fff;
+            transition: 0.2s;
+        }
+        button {
+            background: #0f172a;
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        button:hover {
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .flex-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .flex-row label {
+            margin: 0;
+            font-weight: normal;
+        }
+        .flex-row input[type="file"] {
+            flex: 1;
+            padding: 0.5rem;
+        }
+        .small-btn {
+            width: auto;
+            padding: 0.5rem 1.5rem;
+            margin: 0;
+        }
+        .status {
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+            margin: 1rem 0;
+            border-left: 3px solid #3b82f6;
+        }
+        .result-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 1.25rem;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow: auto;
+            border: 1px solid #e2e8f0;
+            line-height: 1.6;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        .progress-text {
+            font-size: 0.85rem;
+            color: #475569;
+            margin-top: 0.5rem;
+            min-height: 1.6rem;
+        }
+        .model-tip {
+            background: #dbeafe;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+        }
+        code {
+            background: #eef2ff;
+            padding: 0.2rem 0.4rem;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .file-info {
+            font-size: 0.85rem;
+            color: #475569;
+            margin-top: 0.3rem;
+        }
+        .upload-section {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 1rem;
+            margin: 0.5rem 0 1rem 0;
+            border: 1px solid #e2e8f0;
+        }
+        .upload-section .file-info {
+            margin-top: 0.2rem;
+            font-size: 0.8rem;
+        }
+        #debugLog {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 0.8rem;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow: auto;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* ---- 音频文件列表 ---- */
+        .audio-list {
+            margin-top: 0.75rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            overflow: hidden;
+        }
+        .audio-list-header {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1.2fr 0.8fr;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #f1f5f9;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .audio-list-item {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1.2fr 0.8fr;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            align-items: center;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+        .audio-list-item:last-child {
+            border-bottom: none;
+        }
+        .audio-list-item .fname {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .audio-list-item .fsize {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+        .audio-list-item .fstatus {
+            font-weight: 500;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .audio-list-item .fstatus .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-pending .dot {
+            background: #94a3b8;
+        }
+        .status-pending .fstatus {
+            color: #64748b;
+        }
+        .status-processing .dot {
+            background: #3b82f6;
+            animation: pulse 1s infinite;
+        }
+        .status-processing .fstatus {
+            color: #2563eb;
+        }
+        .status-done .dot {
+            background: #22c55e;
+        }
+        .status-done .fstatus {
+            color: #16a34a;
+        }
+        .status-error .dot {
+            background: #ef4444;
+        }
+        .status-error .fstatus {
+            color: #dc2626;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+        .audio-list-placeholder {
+            padding: 1rem;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+        .audio-list .fidx {
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            width: 1.8rem;
+            display: inline-block;
+        }
+
+        /* ---- 汇总结果中的分隔 ---- */
+        .result-divider {
+            border: 0;
+            border-top: 2px dashed #cbd5e1;
+            margin: 1.5rem 0;
+        }
+        .result-audio-header {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+        .result-transcript {
+            color: #334155;
+            background: #f1f5f9;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            margin: 0.25rem 0 0.5rem 0;
+            font-size: 0.85rem;
+            border-left: 3px solid #3b82f6;
+        }
+        .result-correction {
+            color: #1e293b;
+            margin: 0.25rem 0 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .result-correction .label {
+            color: #475569;
+            font-weight: 600;
+        }
+
+        /* ---- 响应式 ---- */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+            .audio-list-header,
+            .audio-list-item {
+                grid-template-columns: 2fr 0.8fr 1fr 0.6fr;
+                font-size: 0.75rem;
+                padding: 0.4rem 0.6rem;
+            }
+            .audio-list-item .fstatus {
+                font-size: 0.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✍️ 口语批改助手 · 多音频批改</h1>
+        <div class="sub">上传多个音频，逐个转写 + AI 批改，汇总输出</div>
+
+        <label>DeepSeek API Key</label>
+        <input type="password" id="apiKey" autocomplete="off" placeholder="sk-..." />
+
+        <div class="model-tip info">
+            ⚡ <strong>WebGPU 要求</strong>：Chrome浏览器，并打开 WebGPU支持。<br />
+            模型加载后，可一次上传多个音频文件批量处理。
+            在Chrome浏览器的地址栏里面输入“chrome://flags/#enable-unsafe-webgpu”并按下回车，然后启用 Unsafe WebGPU Support，WebGPU Developer Features这两个选项即可打开 WebGPU支持。
+        </div>
+
+        <!-- 模型文件夹上传 -->
+        <div class="upload-section">
+            <div class="flex-row">
+                <label>📁 上传模型文件夹</label>
+                <input type="file" id="folderInput" webkitdirectory multiple />
+            </div>
+            <div id="folderInfo" class="file-info">未选择文件夹</div>
+        </div>
+
+        <button id="loadModelBtn" class="small-btn" style="width:100%;">🚀 加载模型（WebGPU）</button>
+
+        <!-- 音频上传（多文件） -->
+        <div class="upload-section" style="margin-top:1.5rem;">
+            <div class="flex-row">
+                <label>🎵 音频文件（MP3 / WAV / M4A 等）</label>
+                <input type="file" id="audioFileInput" accept="audio/*" multiple />
+            </div>
+            <div id="audioFileList" class="audio-list">
+                <div class="audio-list-placeholder">未选择任何音频文件</div>
+            </div>
+            <div class="file-info" style="margin-top:0.5rem; font-size:0.8rem; color:#64748b;">
+                💡 可同时选择多个音频文件，系统将逐个转写并批改，最终汇总结果。
+            </div>
+        </div>
+
+        <button id="fullProcessBtn" disabled>📝 转写并批改（全部音频）</button>
+
+        <div id="status" class="status">请先上传模型文件夹并点击加载</div>
+        <div id="progressDetail" class="progress-text"></div>
+
+        <h3>📋 批改结果汇总</h3>
+        <div id="resultDisplay" class="result-card">等待处理...</div>
+
+        <!-- 调试日志 -->
+        <h3>🔍 请求日志</h3>
+        <div id="debugLog">等待请求...</div>
+    </div>
+
+    <!-- Transformers.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "@huggingface/transformers": "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0/dist/transformers.min.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { pipeline, env } from '@huggingface/transformers';
+
+        // ---- DOM ----
+        const apiKeyInput = document.getElementById('apiKey');
+        const folderInput = document.getElementById('folderInput');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const loadModelBtn = document.getElementById('loadModelBtn');
+        const fullProcessBtn = document.getElementById('fullProcessBtn');
+        const statusDiv = document.getElementById('status');
+        const progressDetail = document.getElementById('progressDetail');
+        const resultDisplayDiv = document.getElementById('resultDisplay');
+        const folderInfo = document.getElementById('folderInfo');
+        const audioFileList = document.getElementById('audioFileList');
+        const debugLog = document.getElementById('debugLog');
+
+        let transcriber = null;
+        let modelReady = false;
+        let modelFiles = {};
+        let modelFolderName = '';
+
+        // ---- 工具：读取文本文件 ----
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(new Error(`读取文本文件失败: ${e.target.error.message || e.target.error}`));
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        // ---- 处理上传的模型文件夹 ----
+        function processModelFolder() {
+            const filesList = folderInput.files;
+            if (!filesList || filesList.length === 0) {
+                throw new Error('请选择包含模型文件的文件夹');
+            }
+
+            const fileArray = Array.from(filesList);
+            const folderFiles = {};
+            let folderName = '';
+            let totalSize = 0;
+
+            for (const file of fileArray) {
+                const relativePath = file.webkitRelativePath || file.name;
+                const parts = relativePath.split('/');
+                if (!folderName && parts.length > 1) folderName = parts[0];
+                const path = parts.length > 1 ? parts.slice(1).join('/') : file.name;
+                folderFiles[path] = file;
+                totalSize += file.size;
+            }
+
+            modelFiles = folderFiles;
+            modelFolderName = folderName || 'model';
+            const sizeGB = (totalSize / (1024 ** 3)).toFixed(2);
+            folderInfo.textContent = `✅ 已加载文件夹: ${modelFolderName} (${Object.keys(modelFiles).length} 个文件, ${sizeGB} GB)`;
+            return modelFiles;
+        }
+
+        // ---- 音频文件列表渲染 ----
+        function renderAudioFileList(files) {
+            if (!files || files.length === 0) {
+                audioFileList.innerHTML = `<div class="audio-list-placeholder">未选择任何音频文件</div>`;
+                return;
+            }
+            const items = Array.from(files).map((file, idx) => {
+                const sizeStr = file.size > 1024 * 1024 ?
+                    (file.size / (1024 * 1024)).toFixed(1) + ' MB' :
+                    (file.size / 1024).toFixed(0) + ' KB';
+                return `
+                    <div class="audio-list-item status-pending" data-index="${idx}" data-filename="${file.name}">
+                        <span class="fname"><span class="fidx">#${idx+1}</span> ${file.name}</span>
+                        <span class="fsize">${sizeStr}</span>
+                        <span class="fstatus"><span class="dot"></span> 待处理</span>
+                        <span style="font-size:0.7rem;color:#94a3b8;">⏳</span>
+                    </div>
+                `;
+            });
+            audioFileList.innerHTML = `
+                <div class="audio-list-header">
+                    <span>文件名</span>
+                    <span>大小</span>
+                    <span>状态</span>
+                    <span></span>
+                </div>
+                ${items.join('')}
+            `;
+        }
+
+        // ---- 更新单个音频文件状态 ----
+        function updateAudioFileStatus(index, status, detail = '') {
+            const items = audioFileList.querySelectorAll('.audio-list-item');
+            if (index >= items.length) return;
+            const item = items[index];
+            // 移除所有状态类
+            item.classList.remove('status-pending', 'status-processing', 'status-done', 'status-error');
+            const statusMap = {
+                'pending': 'status-pending',
+                'processing': 'status-processing',
+                'done': 'status-done',
+                'error': 'status-error'
+            };
+            item.classList.add(statusMap[status] || 'status-pending');
+
+            const statusSpan = item.querySelector('.fstatus');
+            const iconSpan = item.querySelector('span:last-child');
+            const statusTextMap = {
+                'pending': '待处理',
+                'processing': '处理中...',
+                'done': '✅ 完成',
+                'error': '❌ 失败'
+            };
+            if (statusSpan) {
+                statusSpan.innerHTML = `<span class="dot"></span> ${statusTextMap[status] || status}`;
+            }
+            if (iconSpan) {
+                const iconMap = {
+                    'pending': '⏳',
+                    'processing': '🔄',
+                    'done': '✅',
+                    'error': '❌'
+                };
+                iconSpan.textContent = iconMap[status] || '•';
+            }
+            // 如果传入了 detail，在状态后面加小字
+            if (detail && statusSpan) {
+                // 保留 dot 和主文本
+                const dot = statusSpan.querySelector('.dot');
+                const textNode = statusSpan.childNodes[1];
+                if (textNode) {
+                    statusSpan.innerHTML = `<span class="dot"></span> ${statusTextMap[status] || status} <span style="font-weight:400;color:#64748b;font-size:0.7rem;">${detail}</span>`;
+                }
+            }
+        }
+
+        // ---- 音频预处理 ----
+        async function preprocessAudio(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+            let audioBuffer;
+            try {
+                audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            } catch (e) {
+                throw new Error(`音频解码失败: ${e.message}`);
+            }
+            let data = audioBuffer.getChannelData(0);
+            if (audioBuffer.sampleRate !== 16000) {
+                const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * 16000, 16000);
+                const source = offlineCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineCtx.destination);
+                source.start();
+                const rendered = await offlineCtx.startRendering();
+                data = rendered.getChannelData(0);
+            }
+            let max = 0.0;
+            for (let i = 0; i < data.length; i++) {
+                const abs = Math.abs(data[i]);
+                if (abs > max) max = abs;
+            }
+            if (max > 0.001) {
+                const gain = 0.9 / max;
+                for (let i = 0; i < data.length; i++) {
+                    data[i] *= gain;
+                }
+            }
+            return data;
+        }
+
+        // ---- 转录 ----
+        async function transcribeAudioFile(file, onProgress) {
+            if (!modelReady || !transcriber) throw new Error('模型未加载');
+            if (onProgress) onProgress('🔊 预处理音频...');
+            const audioData = await preprocessAudio(file);
+            if (onProgress) onProgress('🧠 Whisper 识别中（GPU 加速）...');
+            const result = await transcriber(audioData);
+            let transcript = '';
+            if (typeof result === 'string') {
+                transcript = result;
+            } else if (Array.isArray(result)) {
+                transcript = result.map(chunk => chunk.text).join(' ');
+            } else if (result && result.text) {
+                transcript = result.text;
+            } else {
+                transcript = '[未检测到有效语音]';
+            }
+            return transcript.trim() || '[未检测到有效语音]';
+        }
+
+        // ---- DeepSeek 调用（仅用于批改） ----
+        async function callDeepSeek(apiKey, prompt, systemMsg = 'You are a strict TOEFL tutor.') {
+            const url = 'https://api.deepseek.com/v1/chat/completions';
+            const headers = {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            };
+            const body = {
+                model: 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: systemMsg },
+                    { role: 'user', content: prompt }
+                ],
+                stream: false,
+                temperature: 0.3
+            };
+            const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+            if (!resp.ok) {
+                const err = await resp.text();
+                throw new Error(`DeepSeek API ${resp.status}: ${err.substring(0, 200)}`);
+            }
+            const data = await resp.json();
+            return data.choices[0].message.content;
+        }
+
+        // ---- 批改（不含打分） ----
+        async function correctOnly(apiKey, text, onProgress) {
+            if (onProgress) onProgress('✍️ AI 批改中...');
+
+            let prompt = `以下是一个学生的写作/口语回答。请重写以下回答，在尽量保留文意一致的前提下将语法错误、用词错误、逻辑错误改好。你的输出里面只需要包含重写的回答，不需要包含解释，或者打招呼的用语（比如“好的，以下是我重写之后的回答：”）：\n${text}`;
+
+            const correction = await callDeepSeek(apiKey, prompt, 'You are a precise TOEFL tutor.');
+            return correction;
+        }
+
+        // ---- 主流程：多音频批改 ----
+        async function runFullPipeline() {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) { alert('请输入 DeepSeek API Key'); return; }
+            const audioFiles = audioFileInput.files;
+            if (!audioFiles || audioFiles.length === 0) { alert('请选择至少一个音频文件'); return; }
+            if (!modelReady) { alert('请先加载模型'); return; }
+
+            fullProcessBtn.disabled = true;
+            const originalText = fullProcessBtn.innerHTML;
+            fullProcessBtn.innerHTML = '⏳ 批量处理中...';
+
+            // 重置所有状态为待处理
+            for (let i = 0; i < audioFiles.length; i++) {
+                updateAudioFileStatus(i, 'pending');
+            }
+
+            // 汇总结果
+            let allResults = '';
+            let successCount = 0;
+            let errorCount = 0;
+
+            // 逐个处理
+            for (let i = 0; i < audioFiles.length; i++) {
+                const file = audioFiles[i];
+                const fileIdx = i + 1;
+                const total = audioFiles.length;
+
+                // 更新状态为处理中
+                updateAudioFileStatus(i, 'processing', `(${fileIdx}/${total})`);
+                statusDiv.innerHTML = `⏳ 正在处理第 ${fileIdx}/${total} 个音频：${file.name}`;
+                progressDetail.innerHTML = `📌 ${file.name} — 转写中...`;
+
+                let transcript = '';
+                let correction = '';
+                let errorMsg = '';
+
+                try {
+                    // 转写
+                    const updateProgress = (msg) => {
+                        progressDetail.innerHTML = `📌 ${file.name} — ${msg}`;
+                        statusDiv.innerHTML = `⏳ [${fileIdx}/${total}] ${file.name} — ${msg}`;
+                    };
+
+                    transcript = await transcribeAudioFile(file, updateProgress);
+                    if (transcript.startsWith('[未检测到')) {
+                        throw new Error(transcript);
+                    }
+
+                    // 批改
+                    updateProgress('✍️ AI 批改中...');
+                    correction = await correctOnly(apiKey, transcript, updateProgress);
+
+                    // 成功
+                    successCount++;
+                    updateAudioFileStatus(i, 'done', `(${fileIdx}/${total})`);
+                    progressDetail.innerHTML = `✅ ${file.name} — 完成`;
+
+                    // 追加到汇总结果
+                    allResults += `\n\n━━━ 📁 音频 ${fileIdx}/${total}：${file.name} ━━━\n\n`;
+                    allResults += `📝 转写文本：\n${transcript}\n\n`;
+                    allResults += `✏️ 批改结果：\n${correction}\n\n`;
+
+                } catch (err) {
+                    errorCount++;
+                    errorMsg = err.message || String(err);
+                    updateAudioFileStatus(i, 'error', `(${fileIdx}/${total})`);
+                    progressDetail.innerHTML = `❌ ${file.name} — 失败：${errorMsg.substring(0, 60)}`;
+                    statusDiv.innerHTML = `❌ [${fileIdx}/${total}] ${file.name} 处理失败`;
+
+                    // 记录错误到结果
+                    allResults += `\n\n━━━ 📁 音频 ${fileIdx}/${total}：${file.name} ━━━\n\n`;
+                    allResults += `❌ 处理失败：${errorMsg}\n\n`;
+                }
+
+                // 小延迟，让UI更新
+                await new Promise(r => setTimeout(r, 150));
+            }
+
+            // ---- 全部完成 ----
+            const total = audioFiles.length;
+            const summary = `\n\n━━━ 📊 处理完成 ━━━\n总计 ${total} 个音频，成功 ${successCount} 个，失败 ${errorCount} 个。\n`;
+            allResults = summary + allResults;
+
+            resultDisplayDiv.innerHTML = allResults;
+            statusDiv.innerHTML = `🎉 全部处理完成！成功 ${successCount} 个，失败 ${errorCount} 个。`;
+            progressDetail.innerHTML = `✅ 所有音频处理完毕`;
+
+            fullProcessBtn.disabled = false;
+            fullProcessBtn.innerHTML = originalText;
+        }
+
+        // ---- 加载模型（WebGPU） ----
+        async function loadModel() {
+            if (!folderInput.files || folderInput.files.length === 0) {
+                alert('请先选择包含模型文件的文件夹');
+                return;
+            }
+
+            transcriber = null;
+            modelReady = false;
+
+            statusDiv.innerHTML = '⏳ 正在处理模型文件夹...';
+            fullProcessBtn.disabled = true;
+            loadModelBtn.disabled = true;
+
+            let originalFetch = window.fetch;
+
+            try {
+                const uploadedFiles = processModelFolder();
+
+                statusDiv.innerHTML = '⏳ 正在加载模型到 GPU（WebGPU）... 请确保 Chrome/Edge 113+ 并允许 GPU 访问。';
+
+                env.allowRemoteModels = false;
+                env.allowLocalModels = true;
+                env.localModelPath = '/';
+                env.useBrowserCache = false;
+
+                // 构建文件映射
+                const modelFileMap = {};
+                for (const [path, data] of Object.entries(uploadedFiles)) {
+                    const fileName = path.split('/').pop();
+                    if (fileName) modelFileMap[fileName] = data;
+                    if (path) modelFileMap[path] = data;
+                    const baseName = fileName ? fileName.replace(/\.[^.]+$/, '') : '';
+                    if (baseName) modelFileMap[baseName] = data;
+                }
+                console.log('📂 modelFileMap keys:', Object.keys(modelFileMap));
+
+                // 自定义 fetch 拦截器
+                originalFetch = window.fetch;
+                window.fetch = async function(url, options) {
+                    const urlStr = typeof url === 'string' ? url : url.url;
+
+                    if (urlStr.includes('cdn.jsdelivr.net') || urlStr.includes('ort-wasm') || urlStr.includes('wasm')) {
+                        console.log('⏩ 外部资源，放行:', urlStr);
+                        return originalFetch.call(this, url, options);
+                    }
+
+                    const segments = urlStr.split('/');
+                    let fileName = segments[segments.length - 1].split('?')[0];
+
+                    const logEntry = `[${new Date().toLocaleTimeString()}] ${urlStr}`;
+                    debugLog.textContent += `\n${logEntry}`;
+                    debugLog.scrollTop = debugLog.scrollHeight;
+                    console.log('🔍 Fetch:', urlStr);
+
+                    const getData = (name) => {
+                        if (modelFileMap[name]) return modelFileMap[name];
+
+                        const base = name
+                            .replace(/_merged(?=\.onnx|\.onnx_data|\.weights)/, '')
+                            .replace(/_with_past(?=\.onnx|\.onnx_data|\.weights)/, '')
+                            .replace(/_quantized(?=\.onnx|\.onnx_data|\.weights)/, '')
+                            .replace(/_fp16(?=\.onnx|\.onnx_data|\.weights)/, '')
+                            .replace(/_int8(?=\.onnx|\.onnx_data|\.weights)/, '');
+                        if (base !== name && modelFileMap[base]) {
+                            console.log(`🔄 回退: ${name} -> ${base}`);
+                            debugLog.textContent += `\n✅ 回退: ${name} -> ${base}`;
+                            return modelFileMap[base];
+                        }
+
+                        for (const [key, data] of Object.entries(modelFileMap)) {
+                            if (key && urlStr.includes(key)) {
+                                console.log(`🔄 路径匹配: ${key}`);
+                                debugLog.textContent += `\n✅ 路径匹配: ${key}`;
+                                return data;
+                            }
+                        }
+                        return null;
+                    };
+
+                    const data = getData(fileName);
+                    if (data) {
+                        if (data instanceof File) {
+                            return new Response(data, {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/octet-stream' }
+                            });
+                        } else if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+                            return new Response(data, {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/octet-stream' }
+                            });
+                        }
+                    }
+                    console.warn('⚠️ 未拦截到请求，使用原始 fetch:', urlStr);
+                    debugLog.textContent += `\n⚠️ 未拦截: ${urlStr}`;
+                    return originalFetch.call(this, url, options);
+                };
+
+                const modelId = 'local-model';
+                transcriber = await pipeline(
+                    'automatic-speech-recognition',
+                    modelId, { device: 'webgpu' }
+                );
+
+                modelReady = true;
+                statusDiv.innerHTML = `✅ 模型成功加载到 GPU！共 ${Object.keys(uploadedFiles).length} 个文件`;
+                fullProcessBtn.disabled = false;
+
+                window.fetch = originalFetch;
+
+            } catch (err) {
+                console.error(err);
+                let errorMsg = err.message || String(err);
+                if (errorMsg.includes('WebGPU') || errorMsg.includes('webgpu')) {
+                    errorMsg = 'WebGPU 不可用或加载失败。\n' +
+                        '请确保：\n' +
+                        '1. 使用 Chrome/Edge 113+ 浏览器\n' +
+                        '2. 系统支持 WebGPU（检查 chrome://gpu 中的 WebGPU 状态）\n' +
+                        '3. 已启用 chrome://flags/#enable-unsafe-webgpu\n' +
+                        '4. 此模型可能仍超出 GPU 显存上限，请尝试更小的模型。';
+                } else if (errorMsg.includes('memory') || errorMsg.includes('Out of memory')) {
+                    errorMsg = 'GPU 显存不足，无法加载此模型。请尝试更小的模型（如 tiny 或 base）。';
+                } else if (errorMsg.includes('读取文件') || errorMsg.includes('FileReader')) {
+                    errorMsg = '文件读取失败，可能文件过大或权限问题。\n' +
+                        '建议：\n' +
+                        '1. 使用更小的模型（如 tiny）\n' +
+                        '2. 将模型部署到后端（Node.js/Python）';
+                }
+                statusDiv.innerHTML = `❌ 模型加载失败: ${errorMsg}`;
+                fullProcessBtn.disabled = true;
+                transcriber = null;
+                modelReady = false;
+                if (originalFetch) {
+                    window.fetch = originalFetch;
+                }
+            } finally {
+                loadModelBtn.disabled = false;
+            }
+        }
+
+        // ---- 事件绑定 ----
+        loadModelBtn.addEventListener('click', loadModel);
+        fullProcessBtn.addEventListener('click', runFullPipeline);
+        fullProcessBtn.disabled = true;
+
+        // 文件夹选择
+        folderInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const folderName = files[0].webkitRelativePath.split('/')[0];
+                folderInfo.textContent = `📁 已选择文件夹: ${folderName} (${files.length} 个文件)`;
+            } else {
+                folderInfo.textContent = '未选择文件夹';
+            }
+        });
+
+        // 音频文件选择（多文件）
+        audioFileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            renderAudioFileList(files);
+            if (files && files.length > 0) {
+                statusDiv.innerHTML = `🎵 已选择 ${files.length} 个音频文件，点击「转写并批改」开始处理`;
+            } else {
+                statusDiv.innerHTML = '请选择至少一个音频文件';
+            }
+        });
+
+        console.log('✅ 页面已加载（多音频批改版）');
+    </script>
+</body>
+</html>
